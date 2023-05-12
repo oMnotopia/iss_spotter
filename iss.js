@@ -7,10 +7,11 @@
  *   - The IP address as a string (null if error). Example: "162.245.144.188"
  */
 const request = require('request');
-const URL = `https://api.ipify.org/?format=json`;
+
 
 const fetchMyIP = (callback) => {
   // use request to fetch IP address from JSON API
+  const URL = `https://api.ipify.org/?format=json`;
   request(URL, (error, response, body) => {
     if (error) return callback(error.message);
     if (response.statusCode !== 200) {
@@ -27,7 +28,7 @@ const fetchMyIP = (callback) => {
 const fetchCoordsByIP = (ip, callback) => {
   if (!ip) return callback(Error("No IP provided"));
 
-  request(`http://ipwhao.is/${ip}`, (error, response, body) => {
+  request(`http://ipwho.is/${ip}`, (error, response, body) => {
     if (error) return callback(error.message);
 
     if (body) {
@@ -40,4 +41,44 @@ const fetchCoordsByIP = (ip, callback) => {
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP };
+const fetchISSFlyOverTimes = (coords, callback) => {
+  const URL = `https://iss-flyover.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
+  request(URL, (error, response, body) => {
+    if (error) return callback(error.message);
+    if (response.statusCode !== 200) {
+      const msg = `Status code ${response.statusCode} when fetching IP. Response: ${body}`;
+      return callback(Error(msg));
+    }
+
+    if (body) {
+      return callback(null, JSON.parse(body).response);
+    }
+  });
+};
+
+const nextISSTimesForMyLocation = (callback) => {
+  fetchMyIP((error, ip) => {
+    if (error) {
+      console.log("It didn't work!", error);
+      return;
+    }
+
+    fetchCoordsByIP(ip, (error, latAndLong) => {
+
+      if (error) {
+        console.log("It didn't work!", error);
+        return;
+      }
+
+      fetchISSFlyOverTimes(latAndLong,(error,flyOverTImes) => {
+        if (error) {
+          console.log("It didn't work",  error);
+          return;
+        }
+        callback(null, flyOverTImes);
+      });
+    });
+  });
+};
+
+module.exports = { nextISSTimesForMyLocation };
